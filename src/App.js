@@ -1,10 +1,10 @@
-import './App.css';
-
+import {Switch, Route} from 'react-router-dom'
+import AdmissionPage from './pages/admissionpage/admission.page';
 function App() {
   return (
-    <div className="App">
-      <h2>Hello World !</h2>
-    </div>
+      <Switch>
+        <Route path="/" component={AdmissionPage} />
+      </Switch>
   );
 }
 
