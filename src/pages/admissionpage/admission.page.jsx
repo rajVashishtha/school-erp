@@ -22,7 +22,7 @@ class AdmissionPage extends React.Component{
     }
 
 
-    handleSubmit = (event)=>{
+    handleSubmit =async (event)=>{
         const form = event.currentTarget;
         event.preventDefault();
         if(form.checkValidity() === false){
@@ -31,7 +31,36 @@ class AdmissionPage extends React.Component{
         this.setState({
             validated:true
         })
-        print(this.state)
+        const data = {
+            name:this.state.name,
+            father_name:this.state.father_name,
+            gender:this.state.gender,
+            student_class:this.state.class,
+            mobile:this.state.mobile,
+            address:this.state.address,
+            dob:this.state.dob
+        }
+        let formdata = new FormData();
+        for(let k of Object.entries(data)){
+            formdata.append(k[0],k[1])
+            print(k)
+        }
+        
+        formdata.append("tc",this.state.tc_file)
+        formdata.append("migration",this.state.mc_file)
+        formdata.append("photo",this.state.pic_file)
+        print(formdata.get("tc"),"printing")
+
+        axios.post("https://school-erp.herokuapp.com/registration",formdata,{
+            headers:{
+                'Content-Type': 'multipart/form-data'
+            }
+        })
+        .then(res=>{
+            console.log(res)
+        }).catch(err=>{
+            console.log(err)
+        })
     }
 
 
@@ -57,13 +86,13 @@ class AdmissionPage extends React.Component{
         return(
             <div>
                 <div className="admission-form">
-                <Form noValidate validated={this.state.validated} onSubmit={this.handleSubmit}>
+                <Form noValidate  validated={this.state.validated} onSubmit={this.handleSubmit}>
                     <Form.Group as={Col} md="4" controlId="validationCustom01">
                     <Form.Label>Student's name</Form.Label>
                     <Form.Control
                         required
                         type="text"
-                        placeholder="First name"
+                        placeholder="Full name"
                         name="name"
                         value={this.state.name}
                         onChange={this.handleChange}
@@ -138,15 +167,14 @@ class AdmissionPage extends React.Component{
                         <Form.File 
                             onChange={this.handleFileChange}
                             id="pic_file"
-                            label={this.state.pic_file?this.state.pic_file.name : "Select Picture"}
+                            label={this.state.pic_file?this.state.pic_file.name: "Select Picture"}
                             custom
-                            required
                         />
                         <Form.Control.Feedback>
                             Looks Good !
                         </Form.Control.Feedback>
                         <Form.Control.Feedback type="invalid">
-                            Please provide DOB.
+                            Please provide Photo.
                         </Form.Control.Feedback>
                     </Form.Group>
                     <Form.Group as={Col} md="4" controlId="validationCustom06">

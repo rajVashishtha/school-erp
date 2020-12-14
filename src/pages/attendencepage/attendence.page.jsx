@@ -2,7 +2,9 @@ import React from 'react';
 import {Button, Table} from 'react-bootstrap';
 import { withStyles } from '@material-ui/core/styles';
 import Radio from '@material-ui/core/Radio';
-import {RadioGroup, FormControlLabel} from '@material-ui/core'
+import {RadioGroup, FormControlLabel} from '@material-ui/core';
+import Skeleton from '@material-ui/lab/Skeleton';
+import Axios from 'axios';
 
 const PresentRadio = withStyles({
     root: {
@@ -39,38 +41,89 @@ const HalfdayRadio = withStyles({
 class AttendencePage extends React.Component{
     state={
         students:[
-            {
-                name:"Raj",roll_no:1
-            },
-            {
-                name:"Satyam",roll_no:2
-            },
-            {
-                name:"Anmol",roll_no:3
-            },
-            {
-                name:"Ashutosh",roll_no:4
-            },
-            {
-                name:"Mayank",roll_no:5
-            }
         ],
-        attendence:["A","A","A","A","A"]
+        attendence: new Map(),
+        submitting:false,
+        loading:true
     }
+
+    componentDidMount(){
+        Axios.get("http://school-erp.herokuapp.com/students").then(res=>{
+            this.setState({students:res.data.students},()=>{
+                let att = new Map();
+                for(let i=0; i < this.state.students.length;i++){
+                    att.set((this.state.students[i].id).toString(), "0");
+                }
+                this.setState({
+                    attendence:att,
+                    loading:false
+                })
+            })
+            
+        }).catch(err=>{
+            console.log(err);
+            this.setState({loading:false})
+        })
+    }
+
 
     handleRadioChange = event =>{
         const {name, value} = event.target;
+        console.log(name)
         let copy = this.state.attendence;
-        copy[parseInt(name)-1] = value;
+        copy.set((name), (value));
         this.setState({
             attendence : copy
-        },()=>{
-            console.log(this.state.attendence)
         })
     }
+    reviver = (key, value)=> {
+        if(typeof value === 'object' && value !== null) {
+            if (value.dataType === 'Map') {
+            return new Map(value.value);
+            }
+        }
+        return value;
+    }
+
+    replacer = (key, value) =>{
+        const originalObject = this[key];
+        if(originalObject instanceof Map) {
+          return {
+            dataType: 'Map',
+            value: Array.from(originalObject.entries()), // or with spread: value: [...originalObject]
+          };
+        } else {
+          return value;
+        }
+    }
+
+    handleSubmit = event =>{
+        const str = JSON.stringify(this.state.attendence, this.replacer);
+        const newValue = JSON.parse(str, this.reviver);
+        this.setState({submitting:true})
+        Axios.post("http://school-erp.herokuapp.com/attendance",newValue).then(res=>{
+            console.log(res.data.message)
+            this.setState({submitting:false})
+        }).catch(err=>{
+            console.log(err)
+            this.setState({submitting:false})
+        })
+    }
+
+    
     render(){
         return(
-          <div style={{width:"94vw",marginLeft:"auto",marginRight:"auto"}}>
+          this.state.loading?(
+            <div style={{width:"80vw",marginLeft:"auto",marginRight:"auto" ,marginTop:"20px"}}>
+                <Skeleton height={100} animation="wave" />
+                <Skeleton height={100} animation="wave" />
+                <Skeleton height={100} animation="wave" />
+                <Skeleton height={100} animation="wave" />
+            </div>
+          ):(
+
+            <div style={{width:"94vw",marginLeft:"auto",marginRight:"auto"}}>
+                
               <Table bordered hover>
                 <thead>
                     <tr>
@@ -82,35 +135,36 @@ class AttendencePage extends React.Component{
                 </thead>
                 <tbody>
                 {
-                    this.state.students.map((item, index)=>(
-                        <tr>
-                            <td>{index+1}</td>
-                            <td>{item.name}</td>
-                            <td>{item.roll_no}</td>
-                            <td>
-                                <RadioGroup row aria-label={`${item.roll_no}`} name={`${item.roll_no}`} value={this.state.attendence[index]} onChange={this.handleRadioChange}>
-                                    <FormControlLabel value="A" control={<AbsentRadio />} label="A" />
-                                    <FormControlLabel value="P" control={<PresentRadio />} label="P" />
-                                    <FormControlLabel value="HD" control={<HalfdayRadio />} label="HD" />
-                                </RadioGroup>
-                            </td>
-                        </tr>
-                    ))
+                    this.state.students.map((item, index)=>{
+                        return(
+                            <tr>
+                                <td>{index+1}</td>
+                                <td>{item.name}</td>
+                                <td>{item.id}</td>
+                                <td>
+                                    <RadioGroup row aria-label={`${item.id}`} name={`${item.id}`} value={`${this.state.attendence.get(item.id.toString())}`} onChange={this.handleRadioChange}>
+                                        <FormControlLabel value="0" control={<AbsentRadio />} label="A" />
+                                        <FormControlLabel value="2" control={<PresentRadio />} label="P" />
+                                        <FormControlLabel value="1" control={<HalfdayRadio />} label="HD" />
+                                    </RadioGroup>
+                                </td>
+                            </tr>
+                        )
+                    })
                 }
-                    {/* <tr>
-                    <td>2</td>
-                    <td>Jacob</td>
-                    <td>Thornton</td>
-                    </tr>
-                    <tr>
-                    <td>3</td>
-                    <td>Larry the Bird</td>
-                    <td>@twitter</td>
-                    </tr> */}
+                {
+                    !this.state.students && (
+                        <h2 align="center" style={{marginTop:"30px"}}>No Students</h2>
+                    )
+                }
                 </tbody>
                 </Table>
-                <Button onClick={()=>{console.log("Submited")}}>Submit</Button>
-          </div>
+                <Button onClick={this.handleSubmit}>{
+                    this.state.submitting?("Loading..."):("Submit")
+                }</Button>
+            </div>
+
+          )
         )
     }
 }
